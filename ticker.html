@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Algorand Ticker</title>
+    <style>
+      div.t{background-color:#eee;}
+      div.pay{background-color:#efe;}
+      div.axfer{background-color:#eef;}
+      span.lsig{background-color:#aaf;}
+      span.msig{background-color:#ffa;}
+      span.fee{color:#666;}
+      span.amt{font-weight:bold;}
+      span.aamt{font-weight:bold;}
+      span.valid{color:#666;}
+      div.grp{padding-left:3em;}
+      div.round{font-weight:bold;}
+      span.snd{font-family:monospace;size:80%;}
+      span.rcv{font-family:monospace;size:80%;}
+      span.grp{font-family:monospace;size:80%;}
+    </style>
+  </head>
+  <body>
+    <div id="ticker"></div>
+    <script>
+      var ws = new WebSocket("ws://" + document.location.host + "/stream");
+      var messages = document.createElement('ul');
+      var latest = [];
+      var maxlen = 20;
+      ws.onmessage = function (event) {
+        var messages = document.getElementById('ticker');
+	var ob = JSON.parse(event.data);
+	latest.push(ob);
+	while (latest.length > maxlen) {
+	  latest.shift();
+	}
+	var text = '';
+	var grp = null;
+	var round = null;
+	// oldest is at latest[0]
+	for (var i = 0; i < latest.length; i++) {
+	  if (!latest[i]) {
+	    break;
+	  }
+	  var t = {};
+	  Object.assign(t, latest[i].txn);
+	  if (grp && (t.grp != grp)) {
+	    text += '</div>';
+	  }
+	  var tround = latest[i]._round;
+	  if (tround) {
+	    if (tround != round) {
+	      text += '<div class="round">Round ' + tround + '</div>';
+	      round = tround;
+	    }
+	  }
+	  var fee = t.fee;
+	  delete t.fee;
+	  var fv = t.fv;
+	  delete t.fv;
+	  var lv = t.lv;
+	  delete t.lv;
+	  var feevalid = '<span class="fee">(fee ' + fee + ')</span> <span class="valid">(valid ' + fv + '-' + lv + ')</span> ';
+	  if (t.grp) {
+	    if (t.grp != grp) {
+	      text += '<div class="grp"><div>Group: <span class="grp">' + t.grp + '</span></div>';
+	      grp = t.grp;
+	    }
+	    delete t.grp;
+	  } else if (grp) {
+	    text += '</div>';
+	    grp = null;
+	  }
+	  text += '<div class="t '+t.type+'">';
+	  if (latest[i].lsig) {
+	    text += '<span class="lsig">LSIG</span> ';
+	  } else if (latest[i].msig) {
+	    text += '<span class="msig">MSIG</span> ';
+	  }
+	  var ttype = t.type;
+	  delete t.type;
+	  if (ttype == 'pay') {
+	    var amt = t.amt || 0;
+	    delete t.amt;
+	    var snd = t.snd;
+	    delete t.snd;
+	    var rcv = t.rcv;
+	    delete t.rcv;
+	    text += '<span class="amt">' + amt + ' µA</span> <span class="snd">' + snd + '</span> -> <span class="rcv">' + rcv + '</span> ' + feevalid + JSON.stringify(t);
+	  } else if (ttype == 'axfer') {
+	    var aamt = t.aamt || 0;
+	    delete t.aamt;
+	    var xaid = t.xaid;
+	    delete t.xaid;
+	    var snd = t.snd;
+	    delete t.snd;
+	    var rcv = t.arcv;
+	    delete t.arcv;
+	    // TODO: look up asset id -> name
+	    text += '<span class="aamt">' + aamt + ' *'+xaid+'</span> <span class="snd">' + snd + '</span> -> <span class="rcv">' + rcv + '</span> ' + feevalid + JSON.stringify(t);
+	  } else {
+	    t.type = ttype;
+	    text += feevalid + JSON.stringify(t);
+	  }
+	  text += '</div>';
+	}
+	if (grp) {
+	  text += '</div>';
+	  grp = null;
+	}
+	messages.innerHTML = text;
+      };
+      document.body.appendChild(messages);
+    </script>
+  </body>
+</html>
