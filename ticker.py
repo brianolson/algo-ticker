@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+#
+# pip install py-algorand-sdk websockets
 
 import asyncio
 import http
