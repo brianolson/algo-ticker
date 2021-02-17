@@ -54,9 +54,22 @@ def tx_to_ws(bot, b, tx):
 fabs = os.path.abspath(__file__)
 fdir = os.path.dirname(fabs)
 
+def _get_asset(path):
+    if path.startswith('/v2'):
+        path = path[3:]
+    global bot
+    return json.dumps(bot.algod().algod_request('GET', path)).encode()
+
+async def get_asset(path):
+    return await asyncio.get_event_loop().run_in_executor(None, _get_asset, path)
+
 async def process_request(path, request_headers):
     if path == '/stream':
         return None
+    if path.startswith('/v2/assets/'):
+        data = await get_asset(path)
+        logger.debug('%s %r %d', path, data[:20], len(data))
+        return http.HTTPStatus.OK, [('Content-Type', 'application/json'), ('Content-Length', str(len(data)))], data
     fpath = os.path.join(fdir, path[1:])
     logger.debug('GET %r -> %r', path, fpath)
     if os.path.exists(fpath):

@@ -27,16 +27,35 @@
       var messages = document.createElement('ul');
       var latest = [];
       var maxlen = 20;
+      var assets = {};
+    var GET = function(url, handler) {
+	var http = new XMLHttpRequest();
+	http.onreadystatechange = handler;
+	http.timeout = 9000;
+	http.open("GET",url,true);
+	http.send();
+    };
+      var assetReceiver = function() {
+	if (this.readyState == 4 && this.status == 200) {
+	  var asset = JSON.parse(this.responseText);
+	  assets[asset.index] = asset;
+	  display();
+	}
+      };
       ws.onmessage = function (event) {
-        var messages = document.getElementById('ticker');
 	var ob = JSON.parse(event.data);
 	latest.push(ob);
 	while (latest.length > maxlen) {
 	  latest.shift();
 	}
+	display();
+      };
+      var display = function() {
+        var messages = document.getElementById('ticker');
 	var text = '';
 	var grp = null;
 	var round = null;
+	var xaid_to_get = {};
 	// oldest is at latest[0]
 	for (var i = 0; i < latest.length; i++) {
 	  if (!latest[i]) {
@@ -92,12 +111,17 @@
 	    delete t.aamt;
 	    var xaid = t.xaid;
 	    delete t.xaid;
+	    if (assets[xaid]) {
+	      xaid = assets[xaid].params['unit-name'];
+	    } else {
+	      xaid_to_get[xaid] = 1;
+	    }
 	    var snd = t.snd;
 	    delete t.snd;
 	    var rcv = t.arcv;
 	    delete t.arcv;
 	    // TODO: look up asset id -> name
-	    text += '<span class="aamt">' + aamt + ' *'+xaid+'</span> <span class="snd">' + snd + '</span> -> <span class="rcv">' + rcv + '</span> ' + feevalid + JSON.stringify(t);
+	    text += '<span class="aamt">' + aamt + ' '+xaid+'</span> <span class="snd">' + snd + '</span> -> <span class="rcv">' + rcv + '</span> ' + feevalid + JSON.stringify(t);
 	  } else {
 	    t.type = ttype;
 	    text += feevalid + JSON.stringify(t);
@@ -109,6 +133,11 @@
 	  grp = null;
 	}
 	messages.innerHTML = text;
+	for (var xaid in xaid_to_get) {
+	  // insert a dummy until we get data back so we don't repeatedly query it
+	  assets[xaid] = {'params':{'unit-name':xaid}, '_isdummy':true};
+	  GET('/v2/assets/' + xaid, assetReceiver);
+	}
       };
       document.body.appendChild(messages);
     </script>
