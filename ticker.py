@@ -91,12 +91,16 @@ async def handler(websocket, path):
         await websocket.send(json.dumps(txn))
         pos += 1
 
-ap = algobot.make_arg_parser()
-args = ap.parse_args()
-bot = algobot.setup(args, [block_dbglog], [tx_to_ws])
-threading.Thread(target=bot.loop).start()
+def main():
+    ap = algobot.make_arg_parser()
+    args = ap.parse_args()
+    bot = algobot.setup(args, [block_dbglog], [tx_to_ws])
+    threading.Thread(target=bot.loop).start()
 
-start_server = websockets.serve(handler, "", 8580, process_request=process_request)
+    start_server = websockets.serve(handler, "", 8580, process_request=process_request)
 
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
+
+if __name__ == '__main__':
+    main()
