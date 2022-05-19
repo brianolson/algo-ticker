@@ -13,6 +13,8 @@ import websockets
 
 import algobot
 
+bot = None
+
 logger = logging.getLogger(__name__)
 logging.getLogger('websockets').setLevel(logging.WARNING)
 
@@ -92,6 +94,7 @@ async def handler(websocket, path):
         pos += 1
 
 def main():
+    global bot
     ap = algobot.make_arg_parser()
     args = ap.parse_args()
     bot = algobot.setup(args, [block_dbglog], [tx_to_ws])
