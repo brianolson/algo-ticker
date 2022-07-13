@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 #
+# Usage:
+#  python3 ticker.py --algod "${ALGORAND_DATA}"
+#
 # pip install py-algorand-sdk websockets
 
 import asyncio
@@ -47,6 +50,7 @@ cbuf = CircularBuffer()
 
 def block_dbglog(bot, b):
     logger.debug('round %d, %d txns', b['block'].get('rnd', 0), len(b['block'].get('txns', [])))
+    cbuf.put({'_round':b['block'].get('rnd',0)})
 
 def tx_to_ws(bot, b, tx):
     #logger.debug('tx r=%d', b['block'].get('rnd', 0))
@@ -100,6 +104,7 @@ def main():
     bot = algobot.setup(args, [block_dbglog], [tx_to_ws])
     threading.Thread(target=bot.loop).start()
 
+    print('http://localhost:8580/ticker.html')
     start_server = websockets.serve(handler, "", 8580, process_request=process_request)
 
     asyncio.get_event_loop().run_until_complete(start_server)

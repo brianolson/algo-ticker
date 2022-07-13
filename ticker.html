@@ -42,8 +42,24 @@
 	  display();
 	}
       };
+      var typestats = {};
+      var rounds = {};
+      var currentRound = null;
       ws.onmessage = function (event) {
 	var ob = JSON.parse(event.data);
+	if (ob.txn && ob.txn.type && ob._round) {
+	  if (ob._round != currentRound) {
+	    rounds[ob._round] = {"start":(new Date()).getTime()};
+	    currentRound = ob._round;
+	  }
+	  var rs = String(ob._round);
+	  var tsr = typestats[rs];
+	  if (!tsr) {
+	    tsr = {};
+	    typestats[rs] = tsr;
+	  }
+	  tsr[ob.txn.type] = (tsr[ob.txn.type] || 0) + 1;
+	}
 	latest.push(ob);
 	while (latest.length > maxlen) {
 	  latest.shift();
@@ -70,8 +86,35 @@
 	  if (tround) {
 	    if (tround != round) {
 	      text += '<div class="round">Round ' + tround + '</div>';
+	      var rs = String(tround);
+	      if (typestats[rs]) {
+		text += '<div>';
+		var firstt = true;
+		var txcount = 0;
+		for (var tt in typestats[rs]) {
+		  if (firstt) {
+		    firstt = false;
+		  } else {
+		    text += ', ';
+		  }
+		  var tc = typestats[rs][tt];
+		  text += '' + tt + ': ' + tc;
+		  txcount += tc;
+		}
+		var prevstart = rounds[tround-1];
+		if (prevstart) {
+		  prevstart = prevstart.start;
+		  var cstart = rounds[tround].start;
+		  var dmillis = cstart-prevstart;
+		  text += ' (' + (dmillis / 1000.0) + 's, ' + (txcount * 1000.0/dmillis) + ' tps)';
+		}
+		text += '</div>';
+	      }
 	      round = tround;
 	    }
+	  }
+	  if (t.type == undefined) {
+	    continue;
 	  }
 	  var fee = t.fee;
 	  delete t.fee;
